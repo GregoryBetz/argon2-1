@@ -12,8 +12,8 @@
         } \
     } while((void)0, 0)
 
-#define BENCH_SAMPLES 512
-#define BENCH_MEM_BLOCKS 512
+#define BENCH_SAMPLES 256
+#define BENCH_MEM_BLOCKS 1024
 
 static argon2_impl selected_argon_impl = {
     "(default)", NULL, fill_segment_default
@@ -25,7 +25,7 @@ static block memory[BENCH_MEM_BLOCKS];
 static uint64_t benchmark_impl(const argon2_impl *impl) {
     clock_t time;
     unsigned int i;
-    uint64_t bench;
+    uint64_t bench, min_bench;
     argon2_instance_t instance;
     argon2_position_t pos;
 
@@ -50,14 +50,17 @@ static uint64_t benchmark_impl(const argon2_impl *impl) {
     impl->fill_segment(&instance, pos);
 
     /* OK, now measure: */
-    bench = 0;
-    time = clock();
+    min_bench = UINT64_MAX;
     for (i = 0; i < BENCH_SAMPLES; i++) {
+        time = clock();
         impl->fill_segment(&instance, pos);
+        time = clock() - time;
+        bench = (uint64_t)time;
+        if (bench < min_bench) {
+            min_bench = bench;
+        }
     }
-    time = clock() - time;
-    bench = (uint64_t)time;
-    return bench;
+    return min_bench;
 }
 
 static void select_impl(FILE *out, const char *prefix)
